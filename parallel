@@ -808,8 +808,6 @@ sub options_hash {
 	 "tollef" => \$opt::tollef,
 	 "gnu" => \$opt::gnu,
 	 "xapply" => \$opt::xapply,
-	 "bibtex|citation" => \$opt::bibtex,
-	 "wc|willcite|will-cite|nn|nonotice|no-notice" => \$opt::willcite,
 	 # Termination and retries
 	 "halt-on-error|halt=s" => \$opt::halt,
 	 "memfree=s" => \$opt::memfree,
@@ -940,7 +938,6 @@ sub parse_options {
         print Limits::Command::real_max_length(),"\n"; wait_and_exit(0);
     }
     if(defined $opt::version) { version(); wait_and_exit(0); }
-    if(defined $opt::bibtex) { bibtex(); wait_and_exit(0); }
     if(defined $opt::record_env) { record_env(); wait_and_exit(0); }
     if(defined $opt::show_limits) { show_limits(); }
     if(@opt::sshlogin) { @Global::sshlogin = @opt::sshlogin; }
@@ -1051,7 +1048,6 @@ sub parse_options {
     if(defined $opt::bar) {
         $opt::progress = $opt::bar;
     }
-    citation_notice();
 
     parse_halt();
     parse_sshlogin();
@@ -3091,7 +3087,7 @@ sub onall {
 	     (@opt::env ? map { "--env ".::shell_quote_scalar($_) } @opt::env : ""),
 	);
     ::debug("init", "| $0 $options\n");
-    open(my $parallel_fh, "|-", "$0 --will-cite -j0 $options") ||
+    open(my $parallel_fh, "|-", "$0 -j0 $options") ||
 	::die_bug("This does not run GNU Parallel: $0 $options");
     my @joblogs;
     for my $host (sort keys %Global::host) {
@@ -3394,27 +3390,6 @@ sub usage {
 	 "");
 }
 
-
-sub citation_notice {
-    # if --will-cite or --plain: do nothing
-    # if stderr redirected: do nothing
-    # if ~/.parallel/will-cite: do nothing
-    # else: print citation notice to stderr
-    if($opt::willcite
-       or
-       $opt::plain
-       or
-       not -t $Global::original_stderr
-       or
-       -e $ENV{'HOME'}."/.parallel/will-cite") {
-	# skip
-    } else {
-	::status
-	    (""
-	    );
-    }
-}
-
 sub status {
     my @w = @_;
     my $fh = $Global::status_fd || *STDERR;
@@ -3459,60 +3434,7 @@ sub version {
                "GNU $Global::progname comes with no warranty.",
                "",
                "Web site: http://www.gnu.org/software/${Global::progname}\n",
-	       "When using programs that use GNU Parallel to process data for publication",
-	       "please cite as described in 'parallel --bibtex'.\n",
         );
-}
-
-sub bibtex {
-    # Returns: N/A
-    print join("\n",
-	       "Academic tradition requires you to cite works you base your article on.",
-	       "When using programs that use GNU Parallel to process data for publication",
-	       "please cite:",
-	       "",
-               "\@article{Tange2011a,",
-	       "  title = {GNU Parallel - The Command-Line Power Tool},",
-	       "  author = {O. Tange},",
-	       "  address = {Frederiksberg, Denmark},",
-	       "  journal = {;login: The USENIX Magazine},",
-	       "  month = {Feb},",
-	       "  number = {1},",
-	       "  volume = {36},",
-	       "  url = {http://www.gnu.org/s/parallel},",
-	       "  year = {2011},",
-	       "  pages = {42-47}",
-	       "  doi = {10.5281/zenodo.16303}",
-	       "}",
-	       "",
-	       "(Feel free to use \\nocite{Tange2011a})",
-	       "",
-	       "This helps funding further development; and it won't cost you a cent.",
-	       "If you pay 10000 EUR you should feel free to use GNU Parallel without citing.",
-	       "",
-	       "If you send a copy of your published article to tange\@gnu.org, it will be",
-	       "mentioned in the release notes of next version of GNU Parallel.\n\n",
-        );
-    while(not -e $ENV{'HOME'}."/.parallel/will-cite") {
-	print "\nType: 'will cite' and press enter.\n> ";
-	my $input = <STDIN>;
-	if($input =~ /will cite/i) {
-	    mkdir $ENV{'HOME'}."/.parallel";
-	    if(open (my $fh, ">", $ENV{'HOME'}."/.parallel/will-cite")) {
-		close $fh;
-		print "\nThank you for your support. It is much appreciated. The citation\n",
-		"notice is now silenced. For other ways to silence the citation notice\n",
-		"see 'man parallel' under '--bibtex'.\n\n";
-	    } else {
-		print "\nThank you for your support. It is much appreciated. The citation\n",
-		"cannot permanently be silenced. Use '--will-cite' instead.\n",
-		"If you use '--will-cite' in scripts you are making it harder to see the\n",
-		"citation notice.  However, if you pay 10000 EUR, you should feel free\n",
-		"to use '--will-cite'.\n\n";
-		last;
-	    }
-	}
-    }
 }
 
 sub show_limits {
